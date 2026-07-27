@@ -64,7 +64,7 @@
       cursor: pointer;
     }
     .check-group input { width: auto; margin: 0; }
-    button#generateBtn {
+    button.primary {
       background: var(--primary);
       color: white;
       border: none;
@@ -76,8 +76,20 @@
       width: 100%;
       transition: background 0.15s;
     }
-    button#generateBtn:hover { background: var(--accent); }
-    button#generateBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.primary:hover { background: var(--accent); }
+    button.primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.secondary {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      padding: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.secondary:hover { background: var(--primary); color: white; }
     #results { margin-top: 1.5rem; }
     .file-card {
       display: flex;
@@ -89,14 +101,15 @@
       border-radius: 8px;
       margin-bottom: 0.6rem;
     }
-    .file-card a {
+    .file-card button.linkish {
       background: var(--accent);
       color: white;
-      text-decoration: none;
+      border: none;
       padding: 0.45rem 1rem;
       border-radius: 6px;
       font-size: 0.9rem;
       font-weight: 600;
+      cursor: pointer;
     }
     .badge {
       display: inline-block;
@@ -110,14 +123,28 @@
     .hint { font-size: 0.8rem; color: #718096; margin-top: -0.4rem; margin-bottom: 0.75rem; }
     .status { text-align: center; color: #4a5568; margin: 1rem 0; font-size: 0.95rem; }
     .error { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 0.75rem 1rem; border-radius: 8px; margin-top: 1rem; }
+    .download-all-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .name-from-email {
+      font-size: 0.8rem;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+      margin-top: -0.5rem;
+      margin-bottom: 0.75rem;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Program Form Worksheet</h1>
-    <p class="subtitle">Enter applicant info once → download the correct prefilled PDFs. Works offline / on GitHub Pages.</p>
+    <p class="subtitle">Enter applicant info once → download the correct prefilled PDFs.</p>
 
-    <!-- Request Type -->
     <div class="card">
       <h2>1. Request Type</h2>
       <label>Type of request</label>
@@ -135,20 +162,34 @@
       <p class="hint">New Request always generates Program A. B and C are optional add-ons.</p>
     </div>
 
-    <!-- Applicant Info -->
     <div class="card">
       <h2>2. Applicant Information</h2>
+
+      <label>Email</label>
+      <input type="email" id="Email" placeholder="First.LastName@agency.gov" oninput="onEmailChange()">
+      <div id="nameFromEmailHint" class="name-from-email" onclick="applyNameFromEmail()">
+        Click to use detected name: <strong id="detectedName"></strong>
+      </div>
+
       <div class="row">
         <div>
-          <label>Full Legal Name *</label>
-          <input type="text" id="FullName" placeholder="Jane Marie Doe">
+          <label>First Name *</label>
+          <input type="text" id="FirstName" placeholder="Jane" oninput="updateFullName()">
         </div>
+        <div>
+          <label>Last Name *</label>
+          <input type="text" id="LastName" placeholder="Doe" oninput="updateFullName()">
+        </div>
+      </div>
+
+      <label>Full Legal Name <span style="font-weight:400;color:#718096">(auto-filled from First + Last)</span></label>
+      <input type="text" id="FullName" placeholder="Jane Doe">
+
+      <div class="row">
         <div>
           <label>Date of Birth</label>
           <input type="text" id="DOB" placeholder="MM/DD/YYYY">
         </div>
-      </div>
-      <div class="row">
         <div>
           <label>SSN (last 4)</label>
           <input type="text" id="SSN" placeholder="6789" maxlength="4">
@@ -158,6 +199,7 @@
           <input type="text" id="CaseNumber" placeholder="optional">
         </div>
       </div>
+
       <label>Street Address</label>
       <input type="text" id="Address" placeholder="123 Main St">
       <div class="row">
@@ -179,18 +221,13 @@
           <label>Phone</label>
           <input type="text" id="Phone" placeholder="(555) 123-4567">
         </div>
-        <div>
-          <label>Email</label>
-          <input type="email" id="Email">
-        </div>
       </div>
     </div>
 
-    <!-- Optional details -->
     <div class="card">
       <h2>3. Optional Details</h2>
       <label>Other / Special Description (Program A)</label>
-      <input type="text" id="OtherDescription" placeholder="Only if 'Other' service is needed">
+      <input type="text" id="OtherDescription" placeholder="Only if Other service is needed">
 
       <div class="row">
         <div>
@@ -211,7 +248,6 @@
       <textarea id="Notes" rows="2" placeholder="Any special circumstances"></textarea>
     </div>
 
-    <!-- Signature -->
     <div class="card">
       <h2>4. Signature</h2>
       <div class="row">
@@ -226,7 +262,7 @@
       </div>
     </div>
 
-    <button id="generateBtn" onclick="generate()">Generate Prefill Forms</button>
+    <button class="primary" id="generateBtn" onclick="generate()">Generate Prefill Forms</button>
     <div id="status" class="status"></div>
     <div id="results"></div>
     <div id="errorBox"></div>
@@ -234,15 +270,14 @@
 
   <script>
     const { PDFDocument } = PDFLib;
+    let generatedFiles = [];
 
-    // Which forms exist and their paths (relative to this index.html)
     const FORM_FILES = {
       A: 'forms/ProgramA.pdf',
       B: 'forms/ProgramB.pdf',
       C: 'forms/ProgramC.pdf'
     };
 
-    // Text fields that appear on the forms
     const TEXT_FIELDS = [
       'FullName', 'DOB', 'SSN', 'Address', 'City', 'State', 'Zip',
       'Phone', 'Email', 'CaseNumber', 'Signature', 'SignatureDate',
@@ -250,7 +285,6 @@
       'Justification', 'PreferredStartDate', 'Notes'
     ];
 
-    // Checkboxes we will try to pre-check
     const DEFAULT_CHECKBOXES = [
       'CertifyAccuracy', 'AuthorizeContact', 'CertifyNeed'
     ];
@@ -261,12 +295,55 @@
 
     function todayStr() {
       const d = new Date();
-      return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+      return (d.getMonth()+1).toString().padStart(2,'0') + '/' +
+             d.getDate().toString().padStart(2,'0') + '/' +
+             d.getFullYear();
+    }
+
+    function updateFullName() {
+      const first = getVal('FirstName');
+      const last = getVal('LastName');
+      document.getElementById('FullName').value = [first, last].filter(Boolean).join(' ');
+    }
+
+    function parseNameFromEmail(email) {
+      if (!email || !email.includes('@')) return null;
+      const local = email.split('@')[0];
+      const parts = local.split(/[._-]+/).filter(Boolean);
+      if (parts.length < 2) return null;
+      const caps = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+      return {
+        first: caps[0],
+        last: caps[caps.length - 1],
+        full: caps.join(' ')
+      };
+    }
+
+    function onEmailChange() {
+      const email = getVal('Email');
+      const parsed = parseNameFromEmail(email);
+      const hint = document.getElementById('nameFromEmailHint');
+      if (parsed) {
+        document.getElementById('detectedName').textContent = parsed.full;
+        hint.style.display = 'block';
+      } else {
+        hint.style.display = 'none';
+      }
+    }
+
+    function applyNameFromEmail() {
+      const email = getVal('Email');
+      const parsed = parseNameFromEmail(email);
+      if (!parsed) return;
+      document.getElementById('FirstName').value = parsed.first;
+      document.getElementById('LastName').value = parsed.last;
+      document.getElementById('FullName').value = parsed.full;
+      document.getElementById('nameFromEmailHint').style.display = 'none';
     }
 
     async function loadPdf(url) {
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`Could not load ${url} (${res.status})`);
+      if (!res.ok) throw new Error('Could not load ' + url + ' (' + res.status + '). Make sure the forms/ folder is next to index.html.');
       return await res.arrayBuffer();
     }
 
@@ -275,27 +352,20 @@
       const pdfDoc = await PDFDocument.load(bytes);
       const form = pdfDoc.getForm();
 
-      // Fill text fields
       for (const key of TEXT_FIELDS) {
         if (!data[key]) continue;
         try {
-          const field = form.getTextField(key);
-          field.setText(String(data[key]));
-        } catch (e) {
-          // field does not exist on this form – ignore
-        }
-      }
-
-      // Pre-check common certification boxes
-      for (const name of DEFAULT_CHECKBOXES) {
-        try {
-          const field = form.getCheckBox(name);
-          field.check();
+          form.getTextField(key).setText(String(data[key]));
         } catch (e) {}
       }
 
-      const filled = await pdfDoc.save();
-      return filled;
+      for (const name of DEFAULT_CHECKBOXES) {
+        try {
+          form.getCheckBox(name).check();
+        } catch (e) {}
+      }
+
+      return await pdfDoc.save();
     }
 
     function downloadBytes(bytes, filename) {
@@ -304,8 +374,22 @@
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
+      document.body.appendChild(a);
       a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+    }
+
+    async function downloadAll() {
+      if (!generatedFiles.length) return;
+      const status = document.getElementById('status');
+      for (let i = 0; i < generatedFiles.length; i++) {
+        const item = generatedFiles[i];
+        status.textContent = 'Downloading ' + (i + 1) + ' of ' + generatedFiles.length + ': ' + item.fileName;
+        downloadBytes(item.bytes, item.fileName);
+        await new Promise(function(r) { setTimeout(r, 650); });
+      }
+      status.textContent = 'All downloads started.';
     }
 
     async function generate() {
@@ -316,6 +400,7 @@
 
       errorBox.innerHTML = '';
       results.innerHTML = '';
+      generatedFiles = [];
       btn.disabled = true;
       status.textContent = 'Generating forms…';
 
@@ -326,21 +411,23 @@
         if (document.getElementById('progB').checked) programs.push('B');
         if (document.getElementById('progC').checked) programs.push('C');
 
-        // Decide which forms to produce
         let formsToMake = [];
         if (requestType === 'new') {
           formsToMake = ['A'];
           if (programs.includes('B')) formsToMake.push('B');
           if (programs.includes('C')) formsToMake.push('C');
         } else {
-          formsToMake = programs.filter(p => ['A','B','C'].includes(p));
+          formsToMake = programs.filter(function(p) { return ['A','B','C'].includes(p); });
         }
 
         if (formsToMake.length === 0) {
           throw new Error('Please select at least one program.');
         }
 
-        const fullName = getVal('FullName') || 'Applicant';
+        const first = getVal('FirstName');
+        const last = getVal('LastName');
+        const fullName = getVal('FullName') || [first, last].filter(Boolean).join(' ') || 'Applicant';
+
         const data = {
           FullName: fullName,
           DOB: getVal('DOB'),
@@ -363,37 +450,46 @@
           Notes: getVal('Notes')
         };
 
-        const safeName = fullName.replace(/[^a-zA-Z0-9]+/g, '_');
-        const downloads = [];
+        const safeName = fullName.replace(/[^a-zA-Z0-9]+/g, '_') || 'Applicant';
 
         for (const prog of formsToMake) {
-          status.textContent = `Filling Program ${prog}…`;
+          status.textContent = 'Filling Program ' + prog + '…';
           const bytes = await fillForm(prog, data);
-          const fileName = `${safeName}_Program${prog}_${requestType}.pdf`;
-          downloads.push({ prog, fileName, bytes });
+          const fileName = safeName + '_Program' + prog + '_' + requestType + '.pdf';
+          generatedFiles.push({ prog: prog, fileName: fileName, bytes: bytes });
         }
 
-        // Show download buttons
-        status.textContent = 'Done — click to download:';
+        status.textContent = 'Ready — ' + generatedFiles.length + ' form(s) generated.';
         results.innerHTML = '';
-        downloads.forEach(item => {
+
+        if (generatedFiles.length > 1) {
+          const bar = document.createElement('div');
+          bar.className = 'download-all-bar';
+          const allBtn = document.createElement('button');
+          allBtn.className = 'secondary';
+          allBtn.textContent = 'Download All (' + generatedFiles.length + ' files)';
+          allBtn.onclick = downloadAll;
+          bar.appendChild(allBtn);
+          results.appendChild(bar);
+        }
+
+        generatedFiles.forEach(function(item) {
           const div = document.createElement('div');
           div.className = 'file-card';
-          const link = document.createElement('a');
-          link.href = '#';
-          link.textContent = 'Download';
-          link.onclick = (e) => {
-            e.preventDefault();
-            downloadBytes(item.bytes, item.fileName);
-          };
-          div.innerHTML = `<div><strong>Program ${item.prog}</strong><br><span style="font-size:0.85rem;color:#4a5568">${item.fileName}</span></div>`;
-          div.appendChild(link);
+          const info = document.createElement('div');
+          info.innerHTML = '<strong>Program ' + item.prog + '</strong><br><span style="font-size:0.85rem;color:#4a5568">' + item.fileName + '</span>';
+          const dlBtn = document.createElement('button');
+          dlBtn.className = 'linkish';
+          dlBtn.textContent = 'Download';
+          dlBtn.onclick = function() { downloadBytes(item.bytes, item.fileName); };
+          div.appendChild(info);
+          div.appendChild(dlBtn);
           results.appendChild(div);
         });
 
       } catch (err) {
         console.error(err);
-        errorBox.innerHTML = `<div class="error"><strong>Error:</strong> ${err.message}</div>`;
+        errorBox.innerHTML = '<div class="error"><strong>Error:</strong> ' + err.message + '</div>';
         status.textContent = '';
       } finally {
         btn.disabled = false;
