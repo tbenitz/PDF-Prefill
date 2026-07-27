@@ -2,111 +2,402 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Program Form Worksheet</title>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
-    label { display: block; margin-top: 1rem; font-weight: 600; }
-    input, select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
-    .row { display: flex; gap: 1rem; }
-    .row > * { flex: 1; }
-    button { margin-top: 1.5rem; padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; }
-    #results { margin-top: 2rem; }
-    .file { background: #f0f0f0; padding: 0.75rem; margin: 0.5rem 0; border-radius: 6px; }
+    :root {
+      --primary: #1a365d;
+      --accent: #2b6cb0;
+      --bg: #f7fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 1.5rem;
+      color: #1a202c;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+    h1 { color: var(--primary); margin-bottom: 0.25rem; }
+    .subtitle { color: #718096; margin-bottom: 1.5rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .card h2 {
+      font-size: 1rem;
+      color: var(--primary);
+      margin: 0 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; color: #4a5568; }
+    input[type="text"], input[type="email"], select, textarea {
+      width: 100%;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      margin-bottom: 0.85rem;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
+    }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 140px; }
+    .check-group { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin-bottom: 0.5rem; }
+    .check-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .check-group input { width: auto; margin: 0; }
+    button#generateBtn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.9rem 1.75rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.15s;
+    }
+    button#generateBtn:hover { background: var(--accent); }
+    button#generateBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+    #results { margin-top: 1.5rem; }
+    .file-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.6rem;
+    }
+    .file-card a {
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      margin-left: 0.35rem;
+    }
+    .hint { font-size: 0.8rem; color: #718096; margin-top: -0.4rem; margin-bottom: 0.75rem; }
+    .status { text-align: center; color: #4a5568; margin: 1rem 0; font-size: 0.95rem; }
+    .error { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 0.75rem 1rem; border-radius: 8px; margin-top: 1rem; }
   </style>
 </head>
 <body>
-  <h1>Program Form Worksheet</h1>
-  <p>Enter the person’s info once. The system decides which forms to prefill.</p>
+  <div class="container">
+    <h1>Program Form Worksheet</h1>
+    <p class="subtitle">Enter applicant info once → download the correct prefilled PDFs. Works offline / on GitHub Pages.</p>
 
-  <label>Request Type
-    <select id="requestType">
-      <option value="new">New Request (always includes Program A)</option>
-      <option value="reinstatement">Reinstatement (only selected programs)</option>
-    </select>
-  </label>
+    <!-- Request Type -->
+    <div class="card">
+      <h2>1. Request Type</h2>
+      <label>Type of request</label>
+      <select id="requestType">
+        <option value="new">New Request (always includes Program A)</option>
+        <option value="reinstatement">Reinstatement (only selected programs)</option>
+      </select>
 
-  <label>Programs Needed</label>
-  <div>
-    <label><input type="checkbox" value="A" id="progA" checked> Program A</label>
-    <label><input type="checkbox" value="B" id="progB"> Program B</label>
-    <label><input type="checkbox" value="C" id="progC"> Program C</label>
-  </div>
-
-  <div class="row">
-    <div>
-      <label>Full Name <input id="fullName" placeholder="Jane Doe"></label>
+      <label style="margin-top:0.75rem">Programs needed</label>
+      <div class="check-group">
+        <label><input type="checkbox" id="progA" value="A" checked> Program A <span class="badge">Always for new</span></label>
+        <label><input type="checkbox" id="progB" value="B"> Program B</label>
+        <label><input type="checkbox" id="progC" value="C"> Program C</label>
+      </div>
+      <p class="hint">New Request always generates Program A. B and C are optional add-ons.</p>
     </div>
-    <div>
-      <label>SSN <input id="ssn" placeholder="123-45-6789"></label>
+
+    <!-- Applicant Info -->
+    <div class="card">
+      <h2>2. Applicant Information</h2>
+      <div class="row">
+        <div>
+          <label>Full Legal Name *</label>
+          <input type="text" id="FullName" placeholder="Jane Marie Doe">
+        </div>
+        <div>
+          <label>Date of Birth</label>
+          <input type="text" id="DOB" placeholder="MM/DD/YYYY">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>SSN (last 4)</label>
+          <input type="text" id="SSN" placeholder="6789" maxlength="4">
+        </div>
+        <div>
+          <label>Case Number</label>
+          <input type="text" id="CaseNumber" placeholder="optional">
+        </div>
+      </div>
+      <label>Street Address</label>
+      <input type="text" id="Address" placeholder="123 Main St">
+      <div class="row">
+        <div>
+          <label>City</label>
+          <input type="text" id="City">
+        </div>
+        <div>
+          <label>State</label>
+          <input type="text" id="State" maxlength="2" placeholder="VA">
+        </div>
+        <div>
+          <label>ZIP</label>
+          <input type="text" id="Zip">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Phone</label>
+          <input type="text" id="Phone" placeholder="(555) 123-4567">
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" id="Email">
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="row">
-    <div>
-      <label>Date of Birth <input id="dob" type="date"></label>
+    <!-- Optional details -->
+    <div class="card">
+      <h2>3. Optional Details</h2>
+      <label>Other / Special Description (Program A)</label>
+      <input type="text" id="OtherDescription" placeholder="Only if 'Other' service is needed">
+
+      <div class="row">
+        <div>
+          <label>Start Date (Program B)</label>
+          <input type="text" id="StartDate" placeholder="MM/DD/YYYY">
+        </div>
+        <div>
+          <label>End Date (Program B)</label>
+          <input type="text" id="EndDate" placeholder="leave blank if ongoing">
+        </div>
+      </div>
+      <label>Justification (Program B)</label>
+      <textarea id="Justification" rows="2" placeholder="Business reason for system access"></textarea>
+
+      <label>Preferred Start Date (Program C)</label>
+      <input type="text" id="PreferredStartDate" placeholder="MM/DD/YYYY">
+      <label>Notes (Program C)</label>
+      <textarea id="Notes" rows="2" placeholder="Any special circumstances"></textarea>
     </div>
-    <div>
-      <label>Case Number <input id="caseNumber"></label>
+
+    <!-- Signature -->
+    <div class="card">
+      <h2>4. Signature</h2>
+      <div class="row">
+        <div>
+          <label>Type full name as signature</label>
+          <input type="text" id="Signature" placeholder="Defaults to Full Name">
+        </div>
+        <div>
+          <label>Date Signed</label>
+          <input type="text" id="SignatureDate" placeholder="Defaults to today">
+        </div>
+      </div>
     </div>
+
+    <button id="generateBtn" onclick="generate()">Generate Prefill Forms</button>
+    <div id="status" class="status"></div>
+    <div id="results"></div>
+    <div id="errorBox"></div>
   </div>
-
-  <label>Address <input id="address"></label>
-  <div class="row">
-    <div><label>City <input id="city"></label></div>
-    <div><label>State <input id="state" maxlength="2"></label></div>
-    <div><label>ZIP <input id="zip"></label></div>
-  </div>
-
-  <div class="row">
-    <div><label>Phone <input id="phone"></label></div>
-    <div><label>Email <input id="email" type="email"></label></div>
-  </div>
-
-  <button onclick="generate()">Generate Prefill Forms</button>
-
-  <div id="results"></div>
 
   <script>
+    const { PDFDocument } = PDFLib;
+
+    // Which forms exist and their paths (relative to this index.html)
+    const FORM_FILES = {
+      A: 'forms/ProgramA.pdf',
+      B: 'forms/ProgramB.pdf',
+      C: 'forms/ProgramC.pdf'
+    };
+
+    // Text fields that appear on the forms
+    const TEXT_FIELDS = [
+      'FullName', 'DOB', 'SSN', 'Address', 'City', 'State', 'Zip',
+      'Phone', 'Email', 'CaseNumber', 'Signature', 'SignatureDate',
+      'RequestDate', 'OtherDescription', 'StartDate', 'EndDate',
+      'Justification', 'PreferredStartDate', 'Notes'
+    ];
+
+    // Checkboxes we will try to pre-check
+    const DEFAULT_CHECKBOXES = [
+      'CertifyAccuracy', 'AuthorizeContact', 'CertifyNeed'
+    ];
+
+    function getVal(id) {
+      return (document.getElementById(id)?.value || '').trim();
+    }
+
+    function todayStr() {
+      const d = new Date();
+      return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+    }
+
+    async function loadPdf(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Could not load ${url} (${res.status})`);
+      return await res.arrayBuffer();
+    }
+
+    async function fillForm(program, data) {
+      const bytes = await loadPdf(FORM_FILES[program]);
+      const pdfDoc = await PDFDocument.load(bytes);
+      const form = pdfDoc.getForm();
+
+      // Fill text fields
+      for (const key of TEXT_FIELDS) {
+        if (!data[key]) continue;
+        try {
+          const field = form.getTextField(key);
+          field.setText(String(data[key]));
+        } catch (e) {
+          // field does not exist on this form – ignore
+        }
+      }
+
+      // Pre-check common certification boxes
+      for (const name of DEFAULT_CHECKBOXES) {
+        try {
+          const field = form.getCheckBox(name);
+          field.check();
+        } catch (e) {}
+      }
+
+      const filled = await pdfDoc.save();
+      return filled;
+    }
+
+    function downloadBytes(bytes, filename) {
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     async function generate() {
-      const programs = [];
-      if (document.getElementById('progA').checked) programs.push('A');
-      if (document.getElementById('progB').checked) programs.push('B');
-      if (document.getElementById('progC').checked) programs.push('C');
+      const btn = document.getElementById('generateBtn');
+      const status = document.getElementById('status');
+      const results = document.getElementById('results');
+      const errorBox = document.getElementById('errorBox');
 
-      const payload = {
-        requestType: document.getElementById('requestType').value,
-        programs,
-        fullName: document.getElementById('fullName').value,
-        ssn: document.getElementById('ssn').value,
-        dob: document.getElementById('dob').value,
-        address: document.getElementById('address').value,
-        city: document.getElementById('city').value,
-        state: document.getElementById('state').value,
-        zip: document.getElementById('zip').value,
-        phone: document.getElementById('phone').value,
-        email: document.getElementById('email').value,
-        caseNumber: document.getElementById('caseNumber').value
-      };
+      errorBox.innerHTML = '';
+      results.innerHTML = '';
+      btn.disabled = true;
+      status.textContent = 'Generating forms…';
 
-      const res = await fetch('/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
+      try {
+        const requestType = document.getElementById('requestType').value;
+        const programs = [];
+        if (document.getElementById('progA').checked) programs.push('A');
+        if (document.getElementById('progB').checked) programs.push('B');
+        if (document.getElementById('progC').checked) programs.push('C');
 
-      const resultsDiv = document.getElementById('results');
-      resultsDiv.innerHTML = '<h2>Filled Forms</h2>';
+        // Decide which forms to produce
+        let formsToMake = [];
+        if (requestType === 'new') {
+          formsToMake = ['A'];
+          if (programs.includes('B')) formsToMake.push('B');
+          if (programs.includes('C')) formsToMake.push('C');
+        } else {
+          formsToMake = programs.filter(p => ['A','B','C'].includes(p));
+        }
 
-      data.files.forEach(f => {
-        const link = document.createElement('a');
-        link.href = `data:application/pdf;base64,${f.base64}`;
-        link.download = f.fileName;
-        link.textContent = `Download ${f.fileName}`;
-        link.className = 'file';
-        link.style.display = 'block';
-        resultsDiv.appendChild(link);
-      });
+        if (formsToMake.length === 0) {
+          throw new Error('Please select at least one program.');
+        }
+
+        const fullName = getVal('FullName') || 'Applicant';
+        const data = {
+          FullName: fullName,
+          DOB: getVal('DOB'),
+          SSN: getVal('SSN'),
+          Address: getVal('Address'),
+          City: getVal('City'),
+          State: getVal('State'),
+          Zip: getVal('Zip'),
+          Phone: getVal('Phone'),
+          Email: getVal('Email'),
+          CaseNumber: getVal('CaseNumber'),
+          Signature: getVal('Signature') || fullName,
+          SignatureDate: getVal('SignatureDate') || todayStr(),
+          RequestDate: todayStr(),
+          OtherDescription: getVal('OtherDescription'),
+          StartDate: getVal('StartDate'),
+          EndDate: getVal('EndDate'),
+          Justification: getVal('Justification'),
+          PreferredStartDate: getVal('PreferredStartDate'),
+          Notes: getVal('Notes')
+        };
+
+        const safeName = fullName.replace(/[^a-zA-Z0-9]+/g, '_');
+        const downloads = [];
+
+        for (const prog of formsToMake) {
+          status.textContent = `Filling Program ${prog}…`;
+          const bytes = await fillForm(prog, data);
+          const fileName = `${safeName}_Program${prog}_${requestType}.pdf`;
+          downloads.push({ prog, fileName, bytes });
+        }
+
+        // Show download buttons
+        status.textContent = 'Done — click to download:';
+        results.innerHTML = '';
+        downloads.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'file-card';
+          const link = document.createElement('a');
+          link.href = '#';
+          link.textContent = 'Download';
+          link.onclick = (e) => {
+            e.preventDefault();
+            downloadBytes(item.bytes, item.fileName);
+          };
+          div.innerHTML = `<div><strong>Program ${item.prog}</strong><br><span style="font-size:0.85rem;color:#4a5568">${item.fileName}</span></div>`;
+          div.appendChild(link);
+          results.appendChild(div);
+        });
+
+      } catch (err) {
+        console.error(err);
+        errorBox.innerHTML = `<div class="error"><strong>Error:</strong> ${err.message}</div>`;
+        status.textContent = '';
+      } finally {
+        btn.disabled = false;
+      }
     }
   </script>
 </body>
