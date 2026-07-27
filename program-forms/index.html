@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Program Form Worksheet</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    input, select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
+    .row { display: flex; gap: 1rem; }
+    .row > * { flex: 1; }
+    button { margin-top: 1.5rem; padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; }
+    #results { margin-top: 2rem; }
+    .file { background: #f0f0f0; padding: 0.75rem; margin: 0.5rem 0; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Program Form Worksheet</h1>
+  <p>Enter the person’s info once. The system decides which forms to prefill.</p>
+
+  <label>Request Type
+    <select id="requestType">
+      <option value="new">New Request (always includes Program A)</option>
+      <option value="reinstatement">Reinstatement (only selected programs)</option>
+    </select>
+  </label>
+
+  <label>Programs Needed</label>
+  <div>
+    <label><input type="checkbox" value="A" id="progA" checked> Program A</label>
+    <label><input type="checkbox" value="B" id="progB"> Program B</label>
+    <label><input type="checkbox" value="C" id="progC"> Program C</label>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Full Name <input id="fullName" placeholder="Jane Doe"></label>
+    </div>
+    <div>
+      <label>SSN <input id="ssn" placeholder="123-45-6789"></label>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Date of Birth <input id="dob" type="date"></label>
+    </div>
+    <div>
+      <label>Case Number <input id="caseNumber"></label>
+    </div>
+  </div>
+
+  <label>Address <input id="address"></label>
+  <div class="row">
+    <div><label>City <input id="city"></label></div>
+    <div><label>State <input id="state" maxlength="2"></label></div>
+    <div><label>ZIP <input id="zip"></label></div>
+  </div>
+
+  <div class="row">
+    <div><label>Phone <input id="phone"></label></div>
+    <div><label>Email <input id="email" type="email"></label></div>
+  </div>
+
+  <button onclick="generate()">Generate Prefill Forms</button>
+
+  <div id="results"></div>
+
+  <script>
+    async function generate() {
+      const programs = [];
+      if (document.getElementById('progA').checked) programs.push('A');
+      if (document.getElementById('progB').checked) programs.push('B');
+      if (document.getElementById('progC').checked) programs.push('C');
+
+      const payload = {
+        requestType: document.getElementById('requestType').value,
+        programs,
+        fullName: document.getElementById('fullName').value,
+        ssn: document.getElementById('ssn').value,
+        dob: document.getElementById('dob').value,
+        address: document.getElementById('address').value,
+        city: document.getElementById('city').value,
+        state: document.getElementById('state').value,
+        zip: document.getElementById('zip').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        caseNumber: document.getElementById('caseNumber').value
+      };
+
+      const res = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<h2>Filled Forms</h2>';
+
+      data.files.forEach(f => {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${f.base64}`;
+        link.download = f.fileName;
+        link.textContent = `Download ${f.fileName}`;
+        link.className = 'file';
+        link.style.display = 'block';
+        resultsDiv.appendChild(link);
+      });
+    }
+  </script>
+</body>
+</html>
